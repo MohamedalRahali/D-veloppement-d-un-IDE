@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ﻿# Développement d'un IDE de type VS Code avec système de tracking sécurisé
 
 ## Description du projet
@@ -47,3 +48,6 @@ npm run build-win
 
 ## Licence
 ISC
+=======
+# D-veloppement-d-un-IDE
+>>>>>>> b4d260d3876256190731c0455b9b9ed392d6a388
