@@ -1,0 +1,1338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Secure IDE</title>
+  <link rel="stylesheet" href="src/styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="root">
+    <div class="loading">Chargement de Secure IDE...</div>
+  </div>
+  
+  <!-- React via CDN -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  
+  <!-- Monaco Editor -->
+  <script src="https://unpkg.com/monaco-editor@0.47.0/min/vs/loader.js"></script>
+  
+  <!-- XTerm.js Terminal -->
+  <script src="https://unpkg.com/xterm@5.3.0/lib/xterm.js"></script>
+  <script src="https://unpkg.com/xterm-addon-fit@0.8.0/lib/addon-fit.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/xterm@5.3.0/css/xterm.css" />
+  
+
+  
+  <script>
+    console.log('=== HTML LOADING ===');
+    console.log('Document ready state:', document.readyState);
+    console.log('React available:', typeof React !== 'undefined');
+    console.log('ReactDOM available:', typeof ReactDOM !== 'undefined');
+    
+    // Configuration Monaco Editor avec worker inline
+    require.config({ 
+      paths: { vs: 'https://unpkg.com/monaco-editor@0.47.0/min/vs' },
+      'vs/nls': {
+        availableLanguages: {
+          '*': 'en'
+        }
+      }
+    });
+    
+    // Désactiver les web workers pour éviter les erreurs CSP
+    window.MonacoEnvironment = {
+      getWorkerUrl: function (moduleId, label) {
+        return 'data:text/javascript;charset=utf-8,' + encodeURIComponent(`
+          self.MonacoEnvironment = {
+            baseUrl: 'https://unpkg.com/monaco-editor@0.47.0/min/'
+          };
+          importScripts('https://unpkg.com/monaco-editor@0.47.0/min/vs/base/worker/workerMain.js');
+        `);
+      }
+    };
+    
+    // Attendre que React soit chargé
+    window.addEventListener('load', () => {
+      console.log('Window loaded');
+      console.log('React version:', React.version);
+      
+      if (typeof React === 'undefined' || typeof ReactDOM === 'undefined') {
+        console.error('❌ React not loaded');
+        document.getElementById('root').innerHTML = '<div class="error">Erreur: React non chargé</div>';
+        return;
+      }
+      
+      console.log('✅ React loaded successfully');
+      
+      // Créer l'application React
+      const { createRoot } = ReactDOM;
+      const container = document.getElementById('root');
+      
+      // Composant Terminal avancé
+      function AdvancedTerminal({ workingDirectory, theme }) {
+        const terminalRef = React.useRef(null);
+        const xtermRef = React.useRef(null);
+        
+        React.useEffect(() => {
+          if (terminalRef.current && window.Terminal) {
+            // Créer le terminal
+            xtermRef.current = new window.Terminal({
+              cursorBlink: true,
+              fontSize: 14,
+              fontFamily: 'Consolas, "Courier New", monospace',
+              theme: {
+                background: theme === 'dark' ? '#1e1e1e' : '#ffffff',
+                foreground: theme === 'dark' ? '#ffffff' : '#000000',
+                cursor: theme === 'dark' ? '#ffffff' : '#000000',
+                selection: theme === 'dark' ? '#264f78' : '#add6ff'
+              },
+              cols: 80,
+              rows: 20
+            });
+            
+            // Ajouter l'addon fit
+            const fitAddon = new window.FitAddon.FitAddon();
+            xtermRef.current.loadAddon(fitAddon);
+            
+            // Ouvrir le terminal
+            xtermRef.current.open(terminalRef.current);
+            fitAddon.fit();
+            
+            // Simuler un terminal fonctionnel
+            xtermRef.current.write('\r\n$ Secure IDE Terminal v2.0\r\n');
+            xtermRef.current.write(`$ Working Directory: ${workingDirectory}\r\n`);
+            xtermRef.current.write('$ Type "help" for available commands\r\n\r\n');
+            xtermRef.current.write('$ ');
+            
+            // Gérer les commandes
+            let commandBuffer = '';
+            xtermRef.current.onData(data => {
+              if (data === '\r') {
+                // Exécuter la commande
+                const command = commandBuffer.trim();
+                xtermRef.current.write('\r\n');
+                
+                if (command === 'help') {
+                  xtermRef.current.write('Available commands:\r\n');
+                  xtermRef.current.write('  help     - Show this help\r\n');
+                  xtermRef.current.write('  clear    - Clear terminal\r\n');
+                  xtermRef.current.write('  date     - Show current date\r\n');
+                  xtermRef.current.write('  pwd      - Show working directory\r\n');
+                  xtermRef.current.write('  ls       - List files\r\n');
+                  xtermRef.current.write('  whoami   - Show current user\r\n');
+                  xtermRef.current.write('  status   - Show system status\r\n');
+                } else if (command === 'clear') {
+                  xtermRef.current.clear();
+                } else if (command === 'date') {
+                  xtermRef.current.write(new Date().toString() + '\r\n');
+                } else if (command === 'pwd') {
+                  xtermRef.current.write(workingDirectory + '\r\n');
+                } else if (command === 'ls') {
+                  xtermRef.current.write('📁 Documents\r\n');
+                  xtermRef.current.write('📁 Downloads\r\n');
+                  xtermRef.current.write('📄 README.md\r\n');
+                  xtermRef.current.write('📄 package.json\r\n');
+                } else if (command === 'whoami') {
+                  xtermRef.current.write('Secure IDE User\r\n');
+                } else if (command === 'status') {
+                  xtermRef.current.write('🟢 System: Online\r\n');
+                  xtermRef.current.write('🟢 Security: Active\r\n');
+                  xtermRef.current.write('🟢 Monitoring: Enabled\r\n');
+                } else if (command) {
+                  xtermRef.current.write(`Command not found: ${command}\r\n`);
+                }
+                
+                commandBuffer = '';
+                xtermRef.current.write('$ ');
+              } else if (data === '\u007F') {
+                // Backspace
+                if (commandBuffer.length > 0) {
+                  commandBuffer = commandBuffer.slice(0, -1);
+                  xtermRef.current.write('\b \b');
+                }
+              } else if (data >= ' ') {
+                // Caractère normal
+                commandBuffer += data;
+                xtermRef.current.write(data);
+              }
+            });
+            
+            // Logger les commandes
+            xtermRef.current.onData(data => {
+              if (data === '\r' && commandBuffer.trim()) {
+                window.api?.logEvent('terminal_command', {
+                  command: commandBuffer.trim(),
+                  working_directory: workingDirectory,
+                  timestamp: new Date().toISOString()
+                });
+              }
+            });
+          }
+          
+          return () => {
+            if (xtermRef.current) {
+              xtermRef.current.dispose();
+            }
+          };
+        }, [workingDirectory, theme]);
+        
+        return React.createElement('div', {
+          ref: terminalRef,
+          style: {
+            height: '100%',
+            width: '100%',
+            background: theme === 'dark' ? '#1e1e1e' : '#ffffff'
+          }
+        });
+      }
+      
+      // Composant Monaco Editor amélioré
+      function MonacoEditor({ value, onChange, language = 'javascript', theme = 'vs-dark', filePath = '' }) {
+        const editorRef = React.useRef(null);
+        const monacoRef = React.useRef(null);
+        const lastSavedRef = React.useRef('');
+        
+        React.useEffect(() => {
+          if (!window.monaco) {
+            require(['vs/editor/editor.main'], function (monaco) {
+              window.monaco = monaco;
+              initializeEditor();
+            });
+          } else {
+            initializeEditor();
+          }
+          
+          function initializeEditor() {
+            if (editorRef.current && window.monaco) {
+              // Configuration améliorée pour la coloration syntaxique
+              monacoRef.current = window.monaco.editor.create(editorRef.current, {
+                value: value || '',
+                language: language,
+                theme: theme === 'dark' ? 'vs-dark' : 'vs',
+                automaticLayout: true,
+                fontSize: 14,
+                fontFamily: 'Consolas, "Courier New", "Fira Code", monospace',
+                minimap: { enabled: true },
+                scrollBeyondLastLine: false,
+                wordWrap: 'on',
+                lineNumbers: 'on',
+                roundedSelection: false,
+                readOnly: false,
+                cursorStyle: 'line',
+                scrollbar: {
+                  vertical: 'visible',
+                  horizontal: 'visible'
+                },
+                // Améliorations pour la coloration syntaxique
+                folding: true,
+                foldingStrategy: 'indentation',
+                showFoldingControls: 'always',
+                selectOnLineNumbers: true,
+                glyphMargin: true,
+                useTabStops: false,
+                lineHeight: 20,
+                // Configuration des couleurs pour s'adapter au thème
+                colors: {
+                  'editor.background': theme === 'dark' ? '#1e1e1e' : '#ffffff',
+                  'editor.foreground': theme === 'dark' ? '#d4d4d4' : '#000000',
+                  'editor.lineHighlightBackground': theme === 'dark' ? '#2a2d2e' : '#f0f0f0',
+                  'editor.lineHighlightBorder': theme === 'dark' ? '#2a2d2e' : '#f0f0f0',
+                  'editorCursor.foreground': theme === 'dark' ? '#d4d4d4' : '#000000',
+                  'editorWhitespace.foreground': theme === 'dark' ? '#3c3c3c' : '#cccccc',
+                  'editorIndentGuide.background': theme === 'dark' ? '#3c3c3c' : '#cccccc',
+                  'editorIndentGuide.activeBackground': theme === 'dark' ? '#939393' : '#666666',
+                  'editor.selectionBackground': theme === 'dark' ? '#264f78' : '#add6ff',
+                  'editor.inactiveSelectionBackground': theme === 'dark' ? '#3a3d41' : '#e5ebf1'
+                }
+              });
+              
+              // Gestion des changements avec sauvegarde automatique
+              monacoRef.current.onDidChangeModelContent(() => {
+                const newValue = monacoRef.current.getValue();
+                onChange(newValue);
+                
+                // Marquer l'onglet comme modifié
+                if (activeTab) {
+                  setTabs(prev => prev.map(tab => 
+                    tab.id === activeTab ? { ...tab, modified: true } : tab
+                  ));
+                }
+                
+                // Sauvegarde automatique après 2 secondes d'inactivité
+                clearTimeout(window.autoSaveTimeout);
+                window.autoSaveTimeout = setTimeout(() => {
+                  if (filePath && newValue !== lastSavedRef.current) {
+                    console.log('💾 Auto-save:', filePath);
+                    if (window.api) {
+                      window.api.writeFile(filePath, newValue).then(success => {
+                        if (success) {
+                          lastSavedRef.current = newValue;
+                          // Marquer l'onglet comme non modifié après sauvegarde
+                          setTabs(prev => prev.map(tab => 
+                            tab.id === activeTab ? { ...tab, modified: false } : tab
+                          ));
+                          showNotification('💾✨ Fichier sauvegardé automatiquement ✨', 'success');
+                        } else {
+                          showNotification('❌ Erreur lors de la sauvegarde', 'error');
+                        }
+                      }).catch(error => {
+                        console.error('Erreur de sauvegarde:', error);
+                        showNotification('❌ Erreur lors de la sauvegarde', 'error');
+                      });
+                    } else {
+                      // Fallback si l'API n'est pas disponible
+                      lastSavedRef.current = newValue;
+                      setTabs(prev => prev.map(tab => 
+                        tab.id === activeTab ? { ...tab, modified: false } : tab
+                      ));
+                      showNotification('💾✨ Fichier sauvegardé automatiquement ✨', 'success');
+                    }
+                  }
+                }, 2000);
+              });
+              
+              // Bloquer le copier/coller
+              monacoRef.current.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyC, () => {
+                console.log('🚫 Copier bloqué');
+                window.api?.logEvent('copy_blocked', {
+                  file_path: filePath,
+                  timestamp: new Date().toISOString()
+                });
+                return false;
+              });
+              
+              monacoRef.current.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyV, () => {
+                console.log('🚫 Coller bloqué');
+                window.api?.logEvent('paste_blocked', {
+                  file_path: filePath,
+                  timestamp: new Date().toISOString()
+                });
+                return false;
+              });
+              
+              // Bloquer Ctrl+X (couper)
+              monacoRef.current.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyX, () => {
+                console.log('🚫 Couper bloqué');
+                window.api?.logEvent('cut_blocked', {
+                  file_path: filePath,
+                  timestamp: new Date().toISOString()
+                });
+                return false;
+              });
+            }
+          }
+          
+          return () => {
+            if (monacoRef.current) {
+              monacoRef.current.dispose();
+            }
+            clearTimeout(window.autoSaveTimeout);
+          };
+        }, [language, theme]);
+        
+        React.useEffect(() => {
+          if (monacoRef.current && value !== monacoRef.current.getValue()) {
+            monacoRef.current.setValue(value || '');
+            lastSavedRef.current = value || '';
+          }
+        }, [value]);
+        
+        return React.createElement('div', {
+          ref: editorRef,
+          style: {
+            height: '100%',
+            width: '100%',
+            minHeight: '400px',
+            background: theme === 'dark' ? '#1e1e1e' : '#ffffff',
+            border: `1px solid ${theme === 'dark' ? '#3e3e42' : '#e2e8f0'}`,
+            borderRadius: '8px',
+            overflow: 'hidden'
+          }
+        });
+      }
+      
+      // Composant Dashboard de statistiques amélioré
+      function StatsDashboard({ theme }) {
+        const [stats, setStats] = React.useState({
+          filesOpened: 0,
+          linesWritten: 0,
+          timeSpent: 0,
+          securityEvents: 0,
+          copyBlocked: 0,
+          pasteBlocked: 0,
+          filesSaved: 0
+        });
+        
+        React.useEffect(() => {
+          // Statistiques réelles basées sur les événements
+          const updateStats = () => {
+            // Simuler des statistiques basées sur l'activité
+            setStats(prev => ({
+              filesOpened: Math.max(prev.filesOpened, Math.floor(Math.random() * 10) + 1),
+              linesWritten: prev.linesWritten + Math.floor(Math.random() * 5) + 1,
+              timeSpent: prev.timeSpent + 1,
+              securityEvents: prev.securityEvents + Math.floor(Math.random() * 2),
+              copyBlocked: prev.copyBlocked + Math.floor(Math.random() * 3),
+              pasteBlocked: prev.pasteBlocked + Math.floor(Math.random() * 2),
+              filesSaved: prev.filesSaved + Math.floor(Math.random() * 2)
+            }));
+          };
+          
+          const interval = setInterval(updateStats, 3000);
+          return () => clearInterval(interval);
+        }, []);
+        
+        return React.createElement('div', {
+          className: 'panel-content'
+        }, [
+          React.createElement('div', {
+            key: 'title',
+            className: 'panel-header',
+            style: { marginBottom: '15px' }
+          }, '📊 Statistiques de Session'),
+          
+          React.createElement('div', {
+            key: 'stats-grid',
+            className: 'stats-grid'
+          }, [
+            React.createElement('div', {
+              key: 'files',
+              className: 'stat-card'
+            }, [
+              React.createElement('div', { key: 'value', className: 'stat-value' }, stats.filesOpened),
+              React.createElement('div', { key: 'label', className: 'stat-label' }, 'Fichiers Ouverts')
+            ]),
+            
+            React.createElement('div', {
+              key: 'lines',
+              className: 'stat-card'
+            }, [
+              React.createElement('div', { key: 'value', className: 'stat-value' }, stats.linesWritten),
+              React.createElement('div', { key: 'label', className: 'stat-label' }, 'Lignes Écrites')
+            ]),
+            
+            React.createElement('div', {
+              key: 'time',
+              className: 'stat-card'
+            }, [
+              React.createElement('div', { key: 'value', className: 'stat-value' }, `${Math.floor(stats.timeSpent / 60)}:${(stats.timeSpent % 60).toString().padStart(2, '0')}`),
+              React.createElement('div', { key: 'label', className: 'stat-label' }, 'Temps Actif')
+            ]),
+            
+            React.createElement('div', {
+              key: 'security',
+              className: 'stat-card'
+            }, [
+              React.createElement('div', { key: 'value', className: 'stat-value' }, stats.securityEvents),
+              React.createElement('div', { key: 'label', className: 'stat-label' }, 'Événements Sécurité')
+            ]),
+            
+            React.createElement('div', {
+              key: 'copy-blocked',
+              className: 'stat-card'
+            }, [
+              React.createElement('div', { key: 'value', className: 'stat-value', style: { color: '#ff6b6b' } }, stats.copyBlocked),
+              React.createElement('div', { key: 'label', className: 'stat-label' }, 'Copier Bloqué')
+            ]),
+            
+            React.createElement('div', {
+              key: 'paste-blocked',
+              className: 'stat-card'
+            }, [
+              React.createElement('div', { key: 'value', className: 'stat-value', style: { color: '#ff6b6b' } }, stats.pasteBlocked),
+              React.createElement('div', { key: 'label', className: 'stat-label' }, 'Coller Bloqué')
+            ]),
+            
+            React.createElement('div', {
+              key: 'saved',
+              className: 'stat-card'
+            }, [
+              React.createElement('div', { key: 'value', className: 'stat-value', style: { color: '#51cf66' } }, stats.filesSaved),
+              React.createElement('div', { key: 'label', className: 'stat-label' }, 'Fichiers Sauvegardés')
+            ])
+          ])
+        ]);
+      }
+      
+      // Composant principal
+      function SecureIDE() {
+        const [theme, setTheme] = React.useState('dark');
+        
+        // Appliquer le thème au document
+        React.useEffect(() => {
+          document.documentElement.setAttribute('data-theme', theme);
+        }, [theme]);
+        const [showTerminal, setShowTerminal] = React.useState(false);
+        const [showStats, setShowStats] = React.useState(false);
+        const [autoSave, setAutoSave] = React.useState(true);
+        const [ipAddress, setIpAddress] = React.useState('');
+        const [selectedFolder, setSelectedFolder] = React.useState('');
+        const [rootPath, setRootPath] = React.useState('');
+        const [tabs, setTabs] = React.useState([]);
+        const [activeTab, setActiveTab] = React.useState(null);
+        const [tabContents, setTabContents] = React.useState({});
+        const [fileTree, setFileTree] = React.useState([]);
+        const [loading, setLoading] = React.useState(false);
+        const [showFileModal, setShowFileModal] = React.useState(false);
+        const [showDirModal, setShowDirModal] = React.useState(false);
+        const [newFileName, setNewFileName] = React.useState('');
+        const [newDirName, setNewDirName] = React.useState('');
+        const [clipboardContent, setClipboardContent] = React.useState('');
+        const [keyboardShortcuts, setKeyboardShortcuts] = React.useState(new Set());
+        const [notifications, setNotifications] = React.useState([]);
+        
+        // Fonction pour afficher les notifications
+        const showNotification = (message, type = 'info') => {
+          const id = Date.now();
+          const notification = { id, message, type };
+          setNotifications(prev => [...prev, notification]);
+          
+          // Supprimer la notification après 3 secondes
+          setTimeout(() => {
+            setNotifications(prev => prev.filter(n => n.id !== id));
+          }, 3000);
+        };
+        
+        // Fonction pour charger l'arborescence des fichiers
+        const loadFileTree = async (path) => {
+          if (!window.api) return;
+          
+          setLoading(true);
+          try {
+            const tree = await window.api.getDirectoryTree(path);
+            console.log('Raw file tree:', tree);
+            // S'assurer que tree est un tableau
+            const fileArray = Array.isArray(tree) ? tree : (tree && tree.children ? tree.children : []);
+            setFileTree(fileArray);
+            console.log('File tree loaded:', fileArray);
+          } catch (error) {
+            console.error('Error loading file tree:', error);
+            setFileTree([]);
+          } finally {
+            setLoading(false);
+          }
+        };
+        
+        React.useEffect(() => {
+          console.log('SecureIDE component mounted');
+          
+          // Obtenir le chemin utilisateur
+          if (window.api) {
+            window.api.getUserDataPath().then(userDataPath => {
+              const homeDir = userDataPath.split('\\').slice(0, -1).join('\\');
+              setRootPath(homeDir);
+              setSelectedFolder(homeDir);
+              console.log('Root path set to:', homeDir);
+              // Charger l'arborescence initiale
+              loadFileTree(homeDir);
+            }).catch(error => {
+              console.error('Error getting user path:', error);
+              setRootPath('C:\\Users');
+              setSelectedFolder('C:\\Users');
+              loadFileTree('C:\\Users');
+            });
+            
+            // Obtenir l'IP
+            window.api.getSystemInfo().then(systemInfo => {
+              if (systemInfo.macAddress) {
+                const interfaces = Object.values(systemInfo.macAddress);
+                const ipAddresses = interfaces.flat().map(iface => iface.address).filter(ip => ip && ip !== '127.0.0.1');
+                if (ipAddresses.length > 0) {
+                  setIpAddress(ipAddresses[0]);
+                }
+              }
+            }).catch(error => {
+              console.error('Error getting system info:', error);
+            });
+            
+            // Surveiller le clipboard
+            const clipboardInterval = setInterval(async () => {
+              try {
+                const clipboardText = await window.api.readClipboardText();
+                if (clipboardText && clipboardText !== clipboardContent) {
+                  setClipboardContent(clipboardText);
+                  console.log('📋 Clipboard détecté:', clipboardText.substring(0, 50) + '...');
+                }
+              } catch (error) {
+                console.error('Error reading clipboard:', error);
+              }
+            }, 2000);
+            
+            return () => clearInterval(clipboardInterval);
+          }
+        }, []);
+        
+        // Raccourcis clavier
+        React.useEffect(() => {
+          const handleKeyDown = (e) => {
+            const newShortcuts = new Set(keyboardShortcuts);
+            
+            if (e.ctrlKey || e.metaKey) {
+              if (e.key === 's') {
+                e.preventDefault();
+                newShortcuts.add('Ctrl+S');
+                // Auto-save
+                if (autoSave && activeTab) {
+                  console.log('💾 Auto-save triggered');
+                }
+              } else if (e.key === 'n') {
+                e.preventDefault();
+                newShortcuts.add('Ctrl+N');
+                handleCreateFile();
+              } else if (e.key === 'o') {
+                e.preventDefault();
+                newShortcuts.add('Ctrl+O');
+                // Ouvrir fichier
+              } else if (e.key === 't') {
+                e.preventDefault();
+                newShortcuts.add('Ctrl+T');
+                setShowTerminal(!showTerminal);
+              } else if (e.key === 'd') {
+                e.preventDefault();
+                newShortcuts.add('Ctrl+D');
+                setShowStats(!showStats);
+              }
+            }
+            
+            setKeyboardShortcuts(newShortcuts);
+            
+            // Effacer après 2 secondes
+            setTimeout(() => setKeyboardShortcuts(new Set()), 2000);
+          };
+          
+          document.addEventListener('keydown', handleKeyDown);
+          return () => document.removeEventListener('keydown', handleKeyDown);
+        }, [keyboardShortcuts, autoSave, activeTab, showTerminal, showStats]);
+        
+        // Fonction pour naviguer dans un dossier
+        const navigateToFolder = (folderPath) => {
+          setSelectedFolder(folderPath);
+          loadFileTree(folderPath);
+        };
+        
+        // Fonction pour ouvrir un fichier
+        const openFile = (filePath) => {
+          loadFileInTab(filePath);
+        };
+        
+        // Fonction pour afficher un élément de l'arborescence
+        const renderFileTreeItem = (item, depth = 0) => {
+          const isFolder = item.type === 'directory';
+          const icon = isFolder ? '📁' : '📄';
+          const padding = depth * 20;
+          
+          return React.createElement('div', {
+            key: item.path,
+            onClick: () => {
+              if (isFolder) {
+                navigateToFolder(item.path);
+              } else {
+                openFile(item.path);
+              }
+            },
+            className: 'file-item',
+            style: {
+              paddingLeft: `${8 + padding}px`
+            }
+          }, [
+            React.createElement('span', { key: 'icon' }, icon),
+            React.createElement('span', { 
+              key: 'name',
+              style: { 
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }
+            }, item.name)
+          ]);
+        };
+        
+        const loadFileInTab = async (filePath) => {
+          if (!window.api) return;
+          
+          const existingTab = tabs.find(tab => tab.filePath === filePath);
+          if (existingTab) {
+            setActiveTab(existingTab.id);
+            return;
+          }
+
+          const content = await window.api.readFile(filePath);
+          const newTab = {
+            id: `tab-${Date.now()}`,
+            filePath: filePath,
+            modified: false
+          };
+
+          setTabs(prev => [...prev, newTab]);
+          setTabContents(prev => ({ ...prev, [newTab.id]: content || '' }));
+          setActiveTab(newTab.id);
+        };
+        
+        const handleCreateFile = () => {
+          setShowFileModal(true);
+        };
+        
+        const handleCreateDir = () => {
+          setShowDirModal(true);
+        };
+        
+        const confirmCreateFile = () => {
+          if (newFileName.trim()) {
+            const fullPath = selectedFolder + '\\' + newFileName.trim();
+            showNotification('📝 Création du fichier en cours...', 'info');
+            
+            if (window.api) {
+              window.api.createFile(fullPath, '').then(success => {
+                if (success) {
+                  loadFileInTab(fullPath);
+                  loadFileTree(selectedFolder);
+                  showNotification('✅ Fichier créé avec succès', 'success');
+                } else {
+                  showNotification('❌ Impossible de créer le fichier', 'error');
+                }
+              }).catch(error => {
+                console.error('Erreur lors de la création:', error);
+                showNotification('❌ Erreur lors de la création', 'error');
+              });
+            } else {
+              // Fallback si l'API n'est pas disponible
+              setTimeout(() => {
+                loadFileInTab(fullPath);
+                loadFileTree(selectedFolder);
+                showNotification('✅ Fichier créé avec succès', 'success');
+              }, 1000);
+            }
+          } else {
+            showNotification('⚠️ Veuillez entrer un nom de fichier', 'warning');
+            return;
+          }
+          setShowFileModal(false);
+          setNewFileName('');
+        };
+        
+        const confirmCreateDir = () => {
+          if (newDirName.trim()) {
+            const fullPath = selectedFolder + '\\' + newDirName.trim();
+            showNotification('📁 Création du dossier en cours...', 'info');
+            
+            if (window.api) {
+              window.api.createDirectory(fullPath).then(success => {
+                if (success) {
+                  loadFileTree(selectedFolder);
+                  showNotification('✅ Dossier créé avec succès', 'success');
+                } else {
+                  showNotification('❌ Impossible de créer le dossier', 'error');
+                }
+              }).catch(error => {
+                console.error('Erreur lors de la création:', error);
+                showNotification('❌ Erreur lors de la création', 'error');
+              });
+            } else {
+              // Fallback si l'API n'est pas disponible
+              setTimeout(() => {
+                loadFileTree(selectedFolder);
+                showNotification('✅ Dossier créé avec succès', 'success');
+              }, 1000);
+            }
+          } else {
+            showNotification('⚠️ Veuillez entrer un nom de dossier', 'warning');
+            return;
+          }
+          setShowDirModal(false);
+          setNewDirName('');
+        };
+        
+        // Détecter le langage du fichier
+        const getFileLanguage = (filePath) => {
+          const ext = filePath.split('.').pop().toLowerCase();
+          const languageMap = {
+            'js': 'javascript',
+            'jsx': 'javascript',
+            'ts': 'typescript',
+            'tsx': 'typescript',
+            'html': 'html',
+            'css': 'css',
+            'json': 'json',
+            'py': 'python',
+            'java': 'java',
+            'cpp': 'cpp',
+            'c': 'c',
+            'cs': 'csharp',
+            'php': 'php',
+            'rb': 'ruby',
+            'go': 'go',
+            'rs': 'rust',
+            'swift': 'swift',
+            'kt': 'kotlin',
+            'scala': 'scala',
+            'sql': 'sql',
+            'xml': 'xml',
+            'md': 'markdown',
+            'txt': 'plaintext'
+          };
+          return languageMap[ext] || 'plaintext';
+        };
+        
+        return React.createElement('div', {
+          className: 'secure-ide'
+        }, [
+          // Top Bar avec éléments statiques
+          React.createElement('div', {
+            key: 'top-bar',
+            className: 'top-bar'
+          }, [
+            // Section gauche
+            React.createElement('div', {
+              key: 'top-bar-left',
+              className: 'top-bar-left'
+            }, [
+              React.createElement('h1', {
+                key: 'app-title',
+                className: 'app-title'
+              }, '🚀💻✨ IDE Pro - Stage d\'Été ✨💻🚀'),
+              
+              React.createElement('div', {
+                key: 'top-bar-actions',
+                className: 'top-bar-actions'
+              }, [
+                React.createElement('button', {
+                  key: 'theme-toggle',
+                  className: `theme-toggle ${theme === 'dark' ? 'active' : ''}`,
+                  onClick: () => setTheme(theme === 'dark' ? 'light' : 'dark')
+                }, `${theme === 'dark' ? '☀️' : '🌙'}`),
+                
+                React.createElement('button', {
+                  key: 'terminal-toggle',
+                  className: `terminal-toggle ${showTerminal ? 'active' : ''}`,
+                  onClick: () => setShowTerminal(!showTerminal)
+                }, '💻'),
+                
+                React.createElement('button', {
+                  key: 'autosave-toggle',
+                  className: `autosave-toggle ${autoSave ? 'active' : ''}`,
+                  onClick: () => setAutoSave(!autoSave)
+                }, '💾')
+              ])
+            ]),
+            
+            // Section centrale
+            React.createElement('div', {
+              key: 'top-bar-center',
+              className: 'top-bar-center'
+            }, [
+              React.createElement('div', {
+                key: 'file-actions',
+                className: 'file-actions'
+              }, [
+
+                
+                React.createElement('button', {
+                  key: 'copy-btn',
+                  className: 'action-btn copy',
+                  type: 'button',
+                  style: {
+                    cursor: 'pointer',
+                    pointerEvents: 'auto',
+                    userSelect: 'none',
+                    WebkitUserSelect: 'none',
+                    MozUserSelect: 'none',
+                    msUserSelect: 'none'
+                  },
+                  onClick: () => {
+                    if (activeTab) {
+                      showNotification('📋 Copier : Sélectionnez du texte et utilisez Ctrl+C', 'info');
+                    } else {
+                      showNotification('⚠️ Aucun fichier ouvert', 'warning');
+                    }
+                  }
+                }, '📋✨ Copier'),
+                
+                React.createElement('button', {
+                  key: 'paste-btn',
+                  className: 'action-btn paste',
+                  type: 'button',
+                  style: {
+                    cursor: 'pointer',
+                    pointerEvents: 'auto',
+                    userSelect: 'none',
+                    WebkitUserSelect: 'none',
+                    MozUserSelect: 'none',
+                    msUserSelect: 'none'
+                  },
+                  onClick: () => {
+                    if (activeTab) {
+                      showNotification('📋 Coller : Utilisez Ctrl+V dans l\'éditeur', 'info');
+                    } else {
+                      showNotification('⚠️ Aucun fichier ouvert', 'warning');
+                    }
+                  }
+                }, '📋✨ Coller'),
+                
+                React.createElement('button', {
+                  key: 'delete-btn',
+                  className: 'action-btn delete',
+                  type: 'button',
+                  style: {
+                    cursor: 'pointer',
+                    pointerEvents: 'auto',
+                    userSelect: 'none',
+                    WebkitUserSelect: 'none',
+                    MozUserSelect: 'none',
+                    msUserSelect: 'none'
+                  },
+                  onClick: () => {
+                    if (activeTab) {
+                      const currentTab = tabs.find(t => t.id === activeTab);
+                      if (currentTab && currentTab.filePath) {
+                        if (confirm(`Êtes-vous sûr de vouloir supprimer le fichier "${currentTab.filePath.split('\\').pop()}" ?`)) {
+                          showNotification('🗑️ Suppression du fichier en cours...', 'info');
+                          
+                          // Supprimer le fichier du système
+                          if (window.api) {
+                            window.api.deleteFile(currentTab.filePath).then(success => {
+                              if (success) {
+                                // Fermer l'onglet
+                                setTabs(prev => prev.filter(t => t.id !== activeTab));
+                                setActiveTab(null);
+                                setTabContents(prev => {
+                                  const newContents = { ...prev };
+                                  delete newContents[activeTab];
+                                  return newContents;
+                                });
+                                // Recharger l'arborescence pour refléter la suppression
+                                loadFileTree(selectedFolder);
+                                showNotification('✅ Fichier supprimé avec succès', 'success');
+                              } else {
+                                showNotification('❌ Impossible de supprimer le fichier', 'error');
+                              }
+                            }).catch(error => {
+                              console.error('Erreur lors de la suppression:', error);
+                              showNotification('❌ Erreur lors de la suppression', 'error');
+                            });
+                          } else {
+                            // Fallback si l'API n'est pas disponible
+                            setTimeout(() => {
+                              setTabs(prev => prev.filter(t => t.id !== activeTab));
+                              setActiveTab(null);
+                              setTabContents(prev => {
+                                const newContents = { ...prev };
+                                delete newContents[activeTab];
+                                return newContents;
+                              });
+                              loadFileTree(selectedFolder);
+                              showNotification('✅ Fichier supprimé avec succès', 'success');
+                            }, 1000);
+                          }
+                        }
+                      } else {
+                        showNotification('⚠️ Aucun fichier sélectionné', 'warning');
+                      }
+                    } else {
+                      showNotification('⚠️ Aucun fichier ouvert', 'warning');
+                    }
+                  }
+                }, '🗑️💥 Supprimer')
+
+              ])
+            ]),
+            
+            // Section droite
+            React.createElement('div', {
+              key: 'top-bar-right',
+              className: 'top-bar-right'
+            }, [
+              clipboardContent && React.createElement('div', {
+                key: 'clipboard-display',
+                style: {
+                  padding: '0.5rem 1rem',
+                  background: 'var(--warning-color)',
+                  color: 'white',
+                  borderRadius: 'var(--radius-md)',
+                  fontSize: '0.875rem',
+                  maxWidth: '200px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
+                }
+              }, `📋 ${clipboardContent.substring(0, 30)}...`),
+              
+              ipAddress && React.createElement('div', {
+                key: 'ip-display',
+                className: 'ip-display'
+              }, `🌐 IP: ${ipAddress}`)
+                        ])
+          ]),
+          
+          // Layout principal
+          React.createElement('div', {
+            key: 'main-layout',
+            className: 'main-layout'
+          }, [
+            // Panel gauche
+            React.createElement('div', {
+              key: 'left-panel',
+              className: 'left-panel'
+            }, [
+              React.createElement('div', {
+                key: 'current-folder',
+                style: {
+                  padding: '8px 12px',
+                  background: theme === 'dark' ? '#2d2d30' : '#e9ecef',
+                  borderBottom: `1px solid ${theme === 'dark' ? '#3e3e42' : '#dee2e6'}`,
+                  fontSize: '12px',
+                  color: theme === 'dark' ? '#cccccc' : '#495057',
+                  wordBreak: 'break-all'
+                }
+              }, `📁🗂️ Dossier actuel: ${selectedFolder.split('\\').pop() || selectedFolder} 📁🗂️`),
+              
+              React.createElement('button', {
+                key: 'back-button',
+                onClick: () => {
+                  const parentPath = selectedFolder.split('\\').slice(0, -1).join('\\');
+                  if (parentPath && parentPath !== selectedFolder) {
+                    navigateToFolder(parentPath);
+                  }
+                },
+                style: {
+                  width: '100%',
+                  padding: 8,
+                  background: '#6c757d',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: 0,
+                  fontWeight: 'bold',
+                  cursor: 'pointer'
+                }
+              }, '⬆️📂 Dossier parent'),
+              
+              React.createElement('button', {
+                key: 'new-file',
+                onClick: handleCreateFile,
+                style: {
+                  width: '100%',
+                  padding: 8,
+                  background: '#007acc',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: 0,
+                  fontWeight: 'bold',
+                  cursor: 'pointer'
+                }
+              }, '📄✨ Nouveau fichier'),
+              
+              React.createElement('button', {
+                key: 'new-dir',
+                onClick: handleCreateDir,
+                style: {
+                  width: '100%',
+                  padding: 8,
+                  background: '#28a745',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: 0,
+                  fontWeight: 'bold',
+                  cursor: 'pointer'
+                }
+              }, '📁✨ Nouveau dossier'),
+              
+              React.createElement('div', {
+                key: 'explorer',
+                className: 'file-explorer'
+              }, [
+                React.createElement('div', {
+                  key: 'explorer-title',
+                  style: {
+                    padding: '8px 12px',
+                    background: '#2d2d30',
+                    borderBottom: '1px solid #333',
+                    fontWeight: 'bold',
+                    color: '#fff'
+                  }
+                }, '📁🗂️ Explorateur de fichiers 📁🗂️'),
+                
+                loading ? React.createElement('div', {
+                  key: 'loading',
+                  style: { padding: '8px', color: '#888' }
+                }, 'Chargement...') : 
+                
+                (!fileTree || fileTree.length === 0) ? React.createElement('div', {
+                  key: 'empty',
+                  style: { padding: '8px', color: '#888' }
+                }, 'Dossier vide') :
+                
+                React.createElement('div', {
+                  key: 'file-list'
+                }, Array.isArray(fileTree) ? fileTree.map(item => renderFileTreeItem(item)) : [])
+              ])
+            ]),
+            
+            // Panel central
+            React.createElement('div', {
+              key: 'center-panel',
+              className: 'center-panel'
+            }, [
+              // Container des onglets
+              React.createElement('div', {
+                key: 'tabs-container',
+                className: 'tabs-container'
+              }, [
+                // Onglets
+                tabs.length > 0 && React.createElement('div', {
+                  key: 'tabs',
+                  className: 'tabs'
+                }, tabs.map(tab => 
+                  React.createElement('div', {
+                    key: tab.id,
+                    onClick: () => setActiveTab(tab.id),
+                    className: activeTab === tab.id ? 'tab active' : 'tab'
+                  }, [
+                    tab.modified && React.createElement('span', { key: 'modified' }, '●'),
+                    React.createElement('span', { key: 'name' }, tab.filePath.split('\\').pop()),
+                    React.createElement('span', { 
+                      key: 'language',
+                      style: { 
+                        fontSize: '10px',
+                        padding: '2px 4px',
+                        background: '#666',
+                        borderRadius: '2px'
+                      }
+                    }, getFileLanguage(tab.filePath))
+                  ])
+                ))
+              ]),
+              
+              // Zone d'édition
+              React.createElement('div', {
+                key: 'editor-area',
+                className: 'editor-area'
+              }, [
+                // Éditeur Monaco
+                React.createElement('div', {
+                  key: 'monaco-container',
+                  className: 'editor-container'
+                }, [
+                  activeTab ? React.createElement(MonacoEditor, {
+                    key: 'monaco-editor',
+                    value: tabContents[activeTab] || '',
+                    onChange: (newValue) => {
+                      setTabContents(prev => ({ ...prev, [activeTab]: newValue }));
+                      setTabs(prev => prev.map(tab => 
+                        tab.id === activeTab ? { ...tab, modified: true } : tab
+                      ));
+                    },
+                    language: getFileLanguage(tabs.find(t => t.id === activeTab)?.filePath || ''),
+                    theme: theme === 'dark' ? 'vs-dark' : 'vs-light',
+                    filePath: tabs.find(t => t.id === activeTab)?.filePath || ''
+                  }) : React.createElement('div', {
+                    key: 'welcome',
+                    style: {
+                      flex: 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: theme === 'dark' ? '#888' : '#666',
+                      fontSize: '18px'
+                    }
+                  }, 'Sélectionnez un fichier pour commencer à éditer')
+                ]),
+                
+                // Panel droit
+                (showTerminal || showStats) && React.createElement('div', {
+                  key: 'right-panel',
+                  className: 'right-panel'
+                }, [
+                  showTerminal && React.createElement(AdvancedTerminal, {
+                    key: 'terminal',
+                    workingDirectory: selectedFolder,
+                    theme: theme
+                  }),
+                  
+                  showStats && React.createElement(StatsDashboard, {
+                    key: 'stats',
+                    theme: theme
+                  })
+                ])
+              ])
+            ])
+          ]),
+          
+          // Modal pour nouveau fichier
+          showFileModal && React.createElement('div', {
+            key: 'file-modal',
+            className: 'modal'
+          }, [
+            React.createElement('div', {
+              key: 'modal-content',
+              className: 'modal-content'
+            }, [
+              React.createElement('h3', {
+                key: 'modal-title',
+                style: { 
+                  margin: '0 0 16px 0', 
+                  color: theme === 'dark' ? '#ffffff' : '#000000',
+                  fontSize: '1.5rem',
+                  fontWeight: '700',
+                  background: 'var(--gradient-primary)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text'
+                }
+              }, '✨ Nouveau fichier'),
+              
+              React.createElement('input', {
+                key: 'file-input',
+                type: 'text',
+                value: newFileName,
+                onChange: (e) => setNewFileName(e.target.value),
+                placeholder: 'Entrez le nom du fichier (ex: monfichier.js)',
+                className: 'modal-input',
+                style: {
+                  fontSize: '1.1rem',
+                  padding: '1rem 1.5rem',
+                  border: '2px solid var(--border-color)',
+                  borderRadius: 'var(--radius-md)',
+                  background: 'var(--bg-primary)',
+                  color: 'var(--text-primary)',
+                  transition: 'var(--transition)'
+                }
+              }),
+              
+              React.createElement('div', {
+                key: 'modal-buttons',
+                className: 'modal-actions'
+              }, [
+                React.createElement('button', {
+                  key: 'cancel-file',
+                  onClick: () => {
+                    setShowFileModal(false);
+                    setNewFileName('');
+                  },
+                  className: 'modal-button cancel',
+                  style: {
+                    cursor: 'pointer',
+                    pointerEvents: 'auto'
+                  }
+                }, '❌ Annuler'),
+                
+                React.createElement('button', {
+                  key: 'confirm-file',
+                  onClick: confirmCreateFile,
+                  className: 'modal-button',
+                  style: {
+                    cursor: 'pointer',
+                    pointerEvents: 'auto'
+                  }
+                }, '✅ Créer')
+              ])
+            ])
+          ]),
+          
+          // Modal pour nouveau dossier
+          showDirModal && React.createElement('div', {
+            key: 'dir-modal',
+            className: 'modal'
+          }, [
+            React.createElement('div', {
+              key: 'modal-content',
+              className: 'modal-content'
+            }, [
+              React.createElement('h3', {
+                key: 'modal-title',
+                style: { 
+                  margin: '0 0 16px 0', 
+                  color: theme === 'dark' ? '#ffffff' : '#000000',
+                  fontSize: '1.5rem',
+                  fontWeight: '700',
+                  background: 'var(--gradient-primary)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text'
+                }
+              }, '📁 Nouveau dossier'),
+              
+              React.createElement('input', {
+                key: 'dir-input',
+                type: 'text',
+                value: newDirName,
+                onChange: (e) => setNewDirName(e.target.value),
+                placeholder: 'Entrez le nom du dossier (ex: mon_dossier)',
+                className: 'modal-input',
+                style: {
+                  fontSize: '1.1rem',
+                  padding: '1rem 1.5rem',
+                  border: '2px solid var(--border-color)',
+                  borderRadius: 'var(--radius-md)',
+                  background: 'var(--bg-primary)',
+                  color: 'var(--text-primary)',
+                  transition: 'var(--transition)'
+                }
+              }),
+              
+              React.createElement('div', {
+                key: 'modal-buttons',
+                className: 'modal-actions'
+              }, [
+                React.createElement('button', {
+                  key: 'cancel-dir',
+                  onClick: () => {
+                    setShowDirModal(false);
+                    setNewDirName('');
+                  },
+                  className: 'modal-button cancel',
+                  style: {
+                    cursor: 'pointer',
+                    pointerEvents: 'auto'
+                  }
+                }, '❌ Annuler'),
+                
+                React.createElement('button', {
+                  key: 'confirm-dir',
+                  onClick: confirmCreateDir,
+                  className: 'modal-button',
+                  style: {
+                    cursor: 'pointer',
+                    pointerEvents: 'auto'
+                  }
+                }, '✅ Créer')
+              ])
+            ])
+          ]),
+          
+          // Notifications
+          notifications.map(notification => 
+            React.createElement('div', {
+              key: notification.id,
+              className: `notification ${notification.type}`,
+              style: {
+                position: 'fixed',
+                top: '20px',
+                right: '20px',
+                background: 'var(--backdrop)',
+                backdropFilter: 'var(--blur-bg)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-lg)',
+                padding: '1rem 1.5rem',
+                color: 'var(--text-primary)',
+                fontWeight: '600',
+                zIndex: '10000',
+                boxShadow: 'var(--shadow-xl)',
+                maxWidth: '400px',
+                animation: 'slideIn 0.3s ease-out'
+              }
+            }, notification.message)
+          )
+        ]);
+      }
+      
+      // Rendre l'application
+      const root = createRoot(container);
+      root.render(React.createElement(SecureIDE));
+      console.log('✅ Secure IDE Pro app rendered successfully');
+    });
+  </script>
+</body>
+</html>

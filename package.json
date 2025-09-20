@@ -1,0 +1,63 @@
+{
+  "name": "secure-ide-stage",
+  "version": "1.0.0",
+  "description": "Développement d'un IDE de type VS Code avec système de tracking sécurisé",
+  "main": "main.js",
+  "homepage": "https://github.com/MohamedalRahali/secure-ide-stage",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "vite --port 3000",
+    "electron": "electron .",
+    "start": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && npm run electron\"",
+    "build": "electron-builder",
+    "build-win": "electron-builder --win",
+    "dist": "npm run build",
+    "pack": "electron-builder --dir"
+  },
+  "keywords": [
+    "electron",
+    "ide",
+    "secure",
+    "stage"
+  ],
+  "author": "MohamedalRahali <mohamed.rahali@esprit.tn>",
+  "license": "ISC",
+  "dependencies": {
+    "@electron/remote": "^2.0.12",
+    "monaco-editor": "^0.47.0",
+    "xterm": "^5.3.0",
+    "xterm-addon-fit": "^0.8.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0",
+    "electron": "^37.2.4",
+    "electron-builder": "^25.1.8",
+    "vite": "^7.0.6",
+    "wait-on": "^7.2.0"
+  },
+  "build": {
+    "appId": "com.esprit.secure-ide-stage",
+    "productName": "Secure IDE Stage",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer.js",
+      "index.html",
+      "src/**/*",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  }
+}
